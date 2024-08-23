@@ -7,6 +7,7 @@ import nltk
 from nltk.corpus import imdb
 from collections import Counter
 import numpy as np
+import math
 
 # Download the IMDb dataset
 nltk.download('imdb')
@@ -64,8 +65,6 @@ test_dataset = IMDbDataset(test_texts, test_labels)
 train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
 test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
 
-import math
-
 # Embedding layer with positional encoding
 class PositionalEncoding(nn.Module):
     def __init__(self, d_model, max_len=512):
@@ -79,3 +78,40 @@ class PositionalEncoding(nn.Module):
 
     def forward(self, x):
         return x + self.encoding[:, :x.size(1), :]
+    
+# Multi-head attention mechanism
+class MultiHeadAttention(nn.Module):
+    def __init__(self, d_model, num_heads):
+        super(MultiHeadAttention, self).__init__()
+        self.num_heads = num_heads
+        self.d_model = d_model
+        assert d_model % num_heads == 0
+        self.depth = d_model // num_heads
+
+        self.wq = nn.Linear(d_model, d_model)
+        self.wk = nn.Linear(d_model, d_model)
+        self.wv = nn.Linear(d_model, d_model)
+        self.fc = nn.Linear(d_model, d_model)
+
+    def split_heads(self, x, batch_size):
+        return x.view(batch_size, -1, self.num_heads, self.depth).transpose(1, 2)
+
+    def forward(self, q, k, v, mask=None):
+        batch_size = q.size(0)
+
+        q = self.split_heads(self.wq(q), batch_size)
+        k = self.split_heads(self.wk(k), batch_size)
+        v = self.split_heads(self.wv(v), batch_size)
+
+        scores = torch.matmul(q, k.transpose(-2, -1)) / math.sqrt(self.depth)
+
+        if mask is not None:
+            scores = scores.masked_fill(mask == 0, -1e9)
+
+        attention_weights = torch.nn.functional.softmax(scores, dim=-1)
+        attention = torch.matmul(attention_weights, v)
+
+        attention = attention.transpose(1, 2).contiguous().view(batch_size, -1, self.d_model)
+        output = self.fc(attention)
+
+        return output, attention_weights
