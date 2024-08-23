@@ -115,3 +115,34 @@ class MultiHeadAttention(nn.Module):
         output = self.fc(attention)
 
         return output, attention_weights
+
+
+# Feed-forward network
+class FeedForwardNetwork(nn.Module):
+    def __init__(self, d_model, d_ff, dropout=0.1):
+        super(FeedForwardNetwork, self).__init__()
+        self.fc1 = nn.Linear(d_model, d_ff)
+        self.fc2 = nn.Linear(d_ff, d_model)
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, x):
+        x = self.dropout(torch.nn.functional.relu(self.fc1(x)))
+        return self.fc2(x)
+    
+# Transformer encoder layer
+class TransformerEncoderLayer(nn.Module):
+    def __init__(self, d_model, num_heads, d_ff, dropout=0.1):
+        super(TransformerEncoderLayer, self).__init__()
+        self.attention = MultiHeadAttention(d_model, num_heads)
+        self.ffn = FeedForwardNetwork(d_model, d_ff, dropout)
+        self.norm1 = nn.LayerNorm(d_model)
+        self.norm2 = nn.LayerNorm(d_model)
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, x, mask=None):
+        attn_output, _ = self.attention(x, x, x, mask)
+        out1 = self.norm1(x + self.dropout(attn_output))
+        ffn_output = self.ffn(out1)
+        out2 = self.norm2(out1 + self.dropout(ffn_output))
+        return out2
+    
