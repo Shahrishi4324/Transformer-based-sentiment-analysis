@@ -179,3 +179,32 @@ class SentimentTransformer(nn.Module):
         enc_output = enc_output.mean(dim=1)  # Global average pooling
         logits = self.fc(enc_output)
         return logits
+
+# Hyperparameters
+num_layers = 4
+d_model = 128
+num_heads = 8
+d_ff = 512
+num_classes = 2
+input_vocab_size = len(train_dataset.vocab)
+learning_rate = 1e-4
+num_epochs = 10
+
+# Initialize the model, loss function, and optimizer
+model = SentimentTransformer(num_layers, d_model, num_heads, d_ff, input_vocab_size, num_classes)
+criterion = nn.CrossEntropyLoss()
+optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+
+# Training loop
+for epoch in range(num_epochs):
+    model.train()
+    running_loss = 0.0
+    for batch in train_loader:
+        inputs, labels = batch
+        optimizer.zero_grad()
+        outputs = model(inputs)
+        loss = criterion(outputs, labels)
+        loss.backward()
+        optimizer.step()
+        running_loss += loss.item()
+    print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {running_loss/len(train_loader):.4f}")
