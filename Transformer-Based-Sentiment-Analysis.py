@@ -145,4 +145,37 @@ class TransformerEncoderLayer(nn.Module):
         ffn_output = self.ffn(out1)
         out2 = self.norm2(out1 + self.dropout(ffn_output))
         return out2
+
+
+# Transformer encoder
+class TransformerEncoder(nn.Module):
+    def __init__(self, num_layers, d_model, num_heads, d_ff, input_vocab_size, max_len=512, dropout=0.1):
+        super(TransformerEncoder, self).__init__()
+        self.embedding = nn.Embedding(input_vocab_size, d_model)
+        self.pos_encoding = PositionalEncoding(d_model, max_len)
+        self.layers = nn.ModuleList([
+            TransformerEncoderLayer(d_model, num_heads, d_ff, dropout)
+            for _ in range(num_layers)
+        ])
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, x, mask=None):
+        x = self.embedding(x)
+        x = self.pos_encoding(x)
+        x = self.dropout(x)
+        for layer in self.layers:
+            x = layer(x, mask)
+        return x
     
+# Sentiment analysis model with transformer encoder
+class SentimentTransformer(nn.Module):
+    def __init__(self, num_layers, d_model, num_heads, d_ff, input_vocab_size, num_classes, max_len=512, dropout=0.1):
+        super(SentimentTransformer, self).__init__()
+        self.encoder = TransformerEncoder(num_layers, d_model, num_heads, d_ff, input_vocab_size, max_len, dropout)
+        self.fc = nn.Linear(d_model, num_classes)
+
+    def forward(self, x, mask=None):
+        enc_output = self.encoder(x, mask)
+        enc_output = enc_output.mean(dim=1)  # Global average pooling
+        logits = self.fc(enc_output)
+        return logits
