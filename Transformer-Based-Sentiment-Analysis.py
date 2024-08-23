@@ -208,3 +208,21 @@ for epoch in range(num_epochs):
         optimizer.step()
         running_loss += loss.item()
     print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {running_loss/len(train_loader):.4f}")
+
+# Evaluation function
+def evaluate_model(model, dataloader):
+    model.eval()
+    correct = 0
+    total = 0
+    with torch.no_grad():
+        for inputs, labels in dataloader:
+            outputs = model(inputs)
+            _, predicted = torch.max(outputs, 1)
+            total += labels.size(0)
+            correct += (predicted == labels).sum().item()
+    accuracy = correct / total
+    return accuracy
+
+# Evaluate on the test set
+test_accuracy = evaluate_model(model, test_loader)
+print(f"Test Accuracy: {test_accuracy:.4f}")
